@@ -1,0 +1,29 @@
+<footer class="footer">
+  <div class="footer__inner">
+    <div class="footer__left">
+      <span class="logo">📚 Learn<span>At</span>Home</span>
+      <p>© {{ year }} LearnAtHome — Tous droits réservés</p>
+    </div>
+    <div class="footer__right">
+      <button class="btn btn-ghost" (click)="toggleAbout()">Qui sommes-nous ?</button>
+    </div>
+  </div>
+
+  <!-- Qui sommes-nous -->
+  <div class="footer__about" #aboutSection *ngIf="showAbout">
+    <div class="about-content">
+      <h3>À propos de LearnAtHome</h3>
+      <p>
+        LearnAtHome est une association à but non lucratif fondée en 2026, dont la mission est de
+        rendre le soutien scolaire accessible à tous les élèves, peu importe leur situation géographique
+        ou sociale. Nous mettons en relation des élèves en difficulté avec des bénévoles passionnés,
+        via notre plateforme numérique.
+      </p>
+      <p>
+        Chaque élève bénéficie d'un tuteur attitré, avec qui il peut planifier des sessions
+        hebdomadaires de travail pour avancer sur ses devoirs et s'organiser efficacement.
+      </p>
+      <button class="close-about" (click)="showAbout = false">✕ Fermer</button>
+    </div>
+  </div>
+</footer>

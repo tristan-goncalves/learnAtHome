@@ -1,0 +1,123 @@
+.header {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  height: var(--header-height);
+  background: white;
+  border-bottom: 1px solid var(--border);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+
+  &__inner {
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 0 24px;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+  }
+
+  &__logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    text-decoration: none;
+
+    .logo-icon { font-size: 24px; }
+
+    .logo-text {
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--text-primary);
+
+      .at { color: var(--primary); }
+    }
+  }
+
+  &__nav {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+
+    .nav-link {
+      padding: 8px 16px;
+      border-radius: var(--radius-sm);
+      font-weight: 500;
+      color: var(--text-secondary);
+      transition: all 0.2s;
+      text-decoration: none;
+
+      &:hover { color: var(--primary); background: rgba(74, 108, 247, 0.06); }
+      &.active { color: var(--primary); }
+      &.btn-primary { color: white; }
+    }
+  }
+
+  &__auth {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+}
+
+.msg-btn {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--bg);
+  color: var(--text-secondary);
+  text-decoration: none;
+  transition: all 0.2s;
+
+  &:hover { background: var(--border); color: var(--primary); }
+
+  .material-icons { font-size: 22px; }
+
+  .badge {
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    min-width: 16px;
+    height: 16px;
+    font-size: 10px;
+    padding: 0 4px;
+  }
+}
+
+.avatar-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+
+  .avatar {
+    width: 38px;
+    height: 38px;
+    border: 2px solid var(--primary);
+    transition: transform 0.2s;
+
+    &:hover { transform: scale(1.05); }
+
+    &--initials {
+      background: var(--primary);
+      color: white;
+      font-size: 14px;
+    }
+  }
+}
+
+.logout-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--text-secondary);
+
+  .material-icons { font-size: 18px; }
+  &:hover { color: var(--danger); }
+}

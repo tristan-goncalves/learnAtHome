@@ -1,0 +1,231 @@
+<div class="page-layout">
+  <app-header></app-header>
+  <div class="authenticated-layout">
+    <app-navbar></app-navbar>
+    <main class="page-content">
+
+      <!-- Toast notification -->
+      <div class="toast" *ngIf="toast"
+           [class.toast--success]="toast.type === 'success'"
+           [class.toast--error]="toast.type === 'error'">
+        <span class="material-icons">{{ toast.type === 'success' ? 'check_circle' : 'error' }}</span>
+        {{ toast.msg }}
+      </div>
+
+      <div class="tasks-page">
+
+        <!-- LISTE DES TÂCHES -->
+        <section class="section">
+          <div class="section-header">
+            <h2><span class="material-icons">check_circle</span> Mes tâches</h2>
+            <button class="btn btn-primary" (click)="openAddTask()">
+              <span class="material-icons">add</span>
+              Ajouter une tâche
+            </button>
+          </div>
+
+          <div class="cards-grid" *ngIf="tasks.length > 0; else noTasks">
+            <div class="item-card card" *ngFor="let task of tasks" [class.completed]="task.completed">
+              <div class="item-card__content">
+                <div class="item-card__header">
+                  <label class="checkbox-label">
+                    <input type="checkbox" [checked]="task.completed" (change)="toggleTask(task)">
+                    <h3>{{ task.title }}</h3>
+                  </label>
+                  <div class="item-actions">
+                    <button class="icon-btn" (click)="openEditTask(task)" title="Modifier">
+                      <span class="material-icons">edit</span>
+                    </button>
+                    <button class="icon-btn danger" (click)="confirmDeleteTask(task.id!)" title="Supprimer">
+                      <span class="material-icons">delete</span>
+                    </button>
+                  </div>
+                </div>
+                <p class="item-description">{{ task.description }}</p>
+                <div class="item-meta">
+                  <span class="material-icons">schedule</span>
+                  {{ formatDate(task.dueDate) }}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <ng-template #noTasks>
+            <div class="empty-state">
+              <span>✅</span>
+              <p>Aucune tâche. Cliquez sur "Ajouter une tâche" pour commencer.</p>
+            </div>
+          </ng-template>
+        </section>
+
+        <!-- LISTE DES ÉVÉNEMENTS -->
+        <section class="section">
+          <div class="section-header">
+            <h2><span class="material-icons">event</span> Mes événements</h2>
+            <button class="btn btn-primary" (click)="openAddEvent()">
+              <span class="material-icons">add</span>
+              Ajouter un événement
+            </button>
+          </div>
+
+          <div class="cards-grid" *ngIf="events.length > 0; else noEvents">
+            <div class="item-card card" *ngFor="let event of events">
+              <div class="item-card__content">
+                <div class="item-card__header">
+                  <h3>{{ event.title }}</h3>
+                  <div class="item-actions">
+                    <button class="icon-btn" (click)="openEditEvent(event)" title="Modifier">
+                      <span class="material-icons">edit</span>
+                    </button>
+                    <button class="icon-btn danger" *ngIf="canDeleteEvent(event)"
+                            (click)="confirmDeleteEvent(event.id!)" title="Supprimer">
+                      <span class="material-icons">delete</span>
+                    </button>
+                  </div>
+                </div>
+                <p class="item-description">{{ event.description }}</p>
+                <div class="item-meta">
+                  <span class="material-icons">calendar_today</span>
+                  {{ formatDate(event.date) }}
+                </div>
+                <div class="participants" *ngIf="event.participantPhotos?.length">
+                  <ng-container *ngFor="let p of event.participantPhotos!.slice(0,2)">
+                    <img *ngIf="p.photoURL" [src]="p.photoURL" [alt]="p.displayName" class="avatar p-avatar">
+                    <div *ngIf="!p.photoURL" class="avatar p-avatar p-avatar--initials">{{ p.displayName.charAt(0) }}</div>
+                  </ng-container>
+                  <span *ngIf="event.participantPhotos!.length > 2" class="more">+{{ event.participantPhotos!.length - 2 }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <ng-template #noEvents>
+            <div class="empty-state">
+              <span>📅</span>
+              <p>Aucun événement. Cliquez sur "Ajouter un événement" pour commencer.</p>
+            </div>
+          </ng-template>
+        </section>
+
+      </div>
+    </main>
+  </div>
+  <app-footer></app-footer>
+</div>
+
+<!-- CREATION DE TÂCHE -->
+<div class="overlay" *ngIf="showTaskModal" (click)="showTaskModal = false">
+  <div class="modal" (click)="$event.stopPropagation()">
+    <div class="modal__header">
+      <h2>{{ editingTask ? 'Modifier la tâche' : 'Nouvelle tâche' }}</h2>
+      <button class="close-btn" (click)="showTaskModal = false">✕</button>
+    </div>
+
+    <div class="modal-error" *ngIf="taskError">
+      <span class="material-icons">error_outline</span> {{ taskError }}
+    </div>
+
+    <div class="form-fields">
+      <div class="form-group">
+        <label>Titre *</label>
+        <input type="text" [(ngModel)]="taskForm.title" placeholder="Titre de la tâche">
+      </div>
+      <div class="form-group">
+        <label>Date et heure limite *</label>
+        <input type="datetime-local" [(ngModel)]="taskForm.dueDate">
+      </div>
+      <div class="form-group">
+        <label>Description</label>
+        <textarea [(ngModel)]="taskForm.description" rows="3" placeholder="Description..."></textarea>
+      </div>
+    </div>
+
+    <div class="modal__actions">
+      <button class="btn btn-ghost" (click)="showTaskModal = false">Annuler</button>
+      <button class="btn btn-primary" (click)="saveTask()"
+              [disabled]="taskLoading || !taskForm.title || !taskForm.dueDate">
+        <span *ngIf="taskLoading" class="spinner"></span>
+        <span *ngIf="!taskLoading">{{ editingTask ? 'Enregistrer' : 'Valider' }}</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- SUPPRESSION DE TÂCHE -->
+<div class="overlay" *ngIf="showDeleteTaskModal" (click)="showDeleteTaskModal = false">
+  <div class="modal modal--small" (click)="$event.stopPropagation()">
+    <div class="modal__header"><h2>Supprimer la tâche</h2></div>
+    <p>Êtes-vous sûr de vouloir supprimer cette tâche ? Cette action est irréversible.</p>
+    <div class="modal__actions">
+      <button class="btn btn-ghost" (click)="showDeleteTaskModal = false">Annuler</button>
+      <button class="btn btn-danger" (click)="deleteTask()">Oui, supprimer</button>
+    </div>
+  </div>
+</div>
+
+<!-- CREATION D'ÉVÉNEMENT -->
+<div class="overlay" *ngIf="showEventModal" (click)="showEventModal = false">
+  <div class="modal" (click)="$event.stopPropagation()">
+    <div class="modal__header">
+      <h2>{{ editingEvent ? "Modifier l'événement" : 'Nouvel événement' }}</h2>
+      <button class="close-btn" (click)="showEventModal = false">✕</button>
+    </div>
+
+    <div class="modal-error" *ngIf="eventError">
+      <span class="material-icons">error_outline</span> {{ eventError }}
+    </div>
+
+    <div class="form-fields">
+      <div class="form-group">
+        <label>Titre *</label>
+        <input type="text" [(ngModel)]="eventForm.title" placeholder="Ex: Mentorat">
+      </div>
+      <div class="form-group">
+        <label>Date et heure *</label>
+        <input type="datetime-local" [(ngModel)]="eventForm.date">
+      </div>
+      <div class="form-group">
+        <label>Description</label>
+        <textarea [(ngModel)]="eventForm.description" rows="2" placeholder="Description brève..."></textarea>
+      </div>
+      <div class="form-group">
+        <label>Ajouter des participants (optionnel)</label>
+        <div class="participant-input">
+          <input type="email" [(ngModel)]="eventForm.participantEmail"
+                 placeholder="email@exemple.com" (keydown.enter)="addParticipant()">
+          <button class="btn btn-secondary" type="button" (click)="addParticipant()">Ajouter</button>
+        </div>
+        <span class="error-msg" *ngIf="participantError">{{ participantError }}</span>
+      </div>
+      <div class="participants-list" *ngIf="eventParticipants.length > 0">
+        <div class="participant-chip" *ngFor="let p of eventParticipants">
+          <img *ngIf="p.photoURL" [src]="p.photoURL" [alt]="p.displayName" class="avatar" style="width:24px;height:24px;">
+          <div *ngIf="!p.photoURL" class="avatar" style="width:24px;height:24px;font-size:11px;background:var(--primary);color:white;">{{ p.displayName.charAt(0) }}</div>
+          <span>{{ p.displayName }}</span>
+          <button (click)="removeParticipant(p.uid)">✕</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal__actions">
+      <button class="btn btn-ghost" (click)="showEventModal = false">Annuler</button>
+      <button class="btn btn-primary" (click)="saveEvent()"
+              [disabled]="eventLoading || !eventForm.title || !eventForm.date">
+        <span *ngIf="eventLoading" class="spinner"></span>
+        <span *ngIf="!eventLoading">{{ editingEvent ? 'Enregistrer' : 'Valider' }}</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- SUPPRESSION D'ÉVÉNEMENT -->
+<div class="overlay" *ngIf="showDeleteEventModal" (click)="showDeleteEventModal = false">
+  <div class="modal modal--small" (click)="$event.stopPropagation()">
+    <div class="modal__header"><h2>Supprimer l'événement</h2></div>
+    <p>Êtes-vous sûr de vouloir supprimer cet événement ? Cette action est irréversible.</p>
+    <div class="modal__actions">
+      <button class="btn btn-ghost" (click)="showDeleteEventModal = false">Annuler</button>
+      <button class="btn btn-danger" (click)="deleteEvent()">Oui, supprimer</button>
+    </div>
+  </div>
+</div>

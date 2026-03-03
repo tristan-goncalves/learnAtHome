@@ -1,0 +1,46 @@
+<header class="header">
+  <div class="header__inner">
+    <!-- Logo de LearnAtHome -->
+    <a routerLink="/" class="header__logo">
+      <span class="logo-icon">📚</span>
+      <span class="logo-text">Learn<span class="at">At</span>Home</span>
+    </a>
+
+    <!-- Navigation sans authentification -->
+    <nav class="header__nav" *ngIf="!currentUser">
+      <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{exact:true}" class="nav-link">Accueil</a>
+      <a routerLink="/connexion" routerLinkActive="active" class="nav-link">Connexion</a>
+      <a routerLink="/inscription" routerLinkActive="active" class="nav-link btn btn-primary">Inscription</a>
+      <a routerLink="/contact" class="nav-link">Contact</a>
+    </nav>
+
+    <!-- Navigation authentifiée -->
+    <div class="header__auth" *ngIf="currentUser">
+      <!-- Icône messagerie avec badge de notification -->
+      <a routerLink="/messagerie" class="msg-btn">
+        <span class="material-icons">chat</span>
+        <span class="badge" *ngIf="unreadCount > 0">{{ unreadCount }}</span>
+      </a>
+
+      <!-- Avatar de l'utilisateur connecté -->
+      <button class="avatar-btn" (click)="showProfileModal = true">
+        <img *ngIf="currentUser.photoURL" [src]="currentUser.photoURL" alt="Photo de profil" class="avatar">
+        <div *ngIf="!currentUser.photoURL" class="avatar avatar--initials">
+          {{ getInitials() }}
+        </div>
+      </button>
+
+      <!-- Bouton de déconnexion -->
+      <button class="btn btn-ghost logout-btn" (click)="logout()">
+        <span class="material-icons">logout</span>
+        Se déconnecter
+      </button>
+    </div>
+  </div>
+</header>
+
+<!-- Modal de profil -->
+<app-profile-modal
+  *ngIf="showProfileModal"
+  (close)="showProfileModal = false">
+</app-profile-modal>

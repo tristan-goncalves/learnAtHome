@@ -1,0 +1,78 @@
+<div class="page-layout">
+  <app-header></app-header>
+  <div class="authenticated-layout">
+    <app-navbar></app-navbar>
+    <main class="page-content">
+      <div class="calendar-page">
+
+        <!-- Calendrier mensuel -->
+        <section class="calendar-section card">
+          <div class="cal-header">
+            <button class="nav-btn" (click)="prevMonth()">
+              <span class="material-icons">chevron_left</span>
+            </button>
+            <h2>{{ months[selectedMonth.getMonth()] }} {{ selectedMonth.getFullYear() }}</h2>
+            <button class="nav-btn" (click)="nextMonth()">
+              <span class="material-icons">chevron_right</span>
+            </button>
+          </div>
+
+          <div class="legend">
+            <span class="legend-item task"><span class="dot"></span>Tâche</span>
+            <span class="legend-item event"><span class="dot"></span>Événement</span>
+          </div>
+
+          <div class="cal-grid">
+            <div class="weekday" *ngFor="let day of weekDays">{{ day }}</div>
+            <div
+              class="cal-day"
+              *ngFor="let day of calendarDays"
+              [class.other-month]="!day.isCurrentMonth"
+              [class.today]="day.isToday"
+              [class.has-task]="day.hasTasks && !day.hasEvents"
+              [class.has-event]="!day.hasTasks && day.hasEvents"
+              [class.has-both]="day.hasTasks && day.hasEvents"
+            >
+              <span class="day-number">{{ day.date.getDate() }}</span>
+              <div class="day-dots">
+                <span class="dot task-dot" *ngIf="day.hasTasks"></span>
+                <span class="dot event-dot" *ngIf="day.hasEvents"></span>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Evénements de la semaine -->
+        <section class="week-section">
+          <h2>
+            <span class="material-icons">view_week</span>
+            Cette semaine
+          </h2>
+
+          <div class="week-items" *ngIf="weekItems.length > 0; else noWeekItems">
+            <div class="week-item card" *ngFor="let item of weekItems" [class.is-task]="isTask(item)">
+              <div class="week-item__type">
+                <span class="material-icons">{{ isTask(item) ? 'check_circle' : 'event' }}</span>
+                <span>{{ isTask(item) ? 'Tâche' : 'Événement' }}</span>
+              </div>
+              <h3>{{ item.title }}</h3>
+              <p>{{ item.description }}</p>
+              <div class="week-item__date">
+                <span class="material-icons">schedule</span>
+                {{ formatDate(isTask(item) ? item.dueDate : item.date) }}
+              </div>
+            </div>
+          </div>
+
+          <ng-template #noWeekItems>
+            <div class="empty-state">
+              <span>🗓️</span>
+              <p>Aucun événement ni tâche cette semaine.</p>
+            </div>
+          </ng-template>
+        </section>
+      </div>
+    </main>
+  </div>
+  <app-footer></app-footer>
+</div>

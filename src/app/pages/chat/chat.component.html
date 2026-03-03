@@ -1,0 +1,145 @@
+<div class="page-layout">
+  <app-header></app-header>
+  <div class="authenticated-layout">
+    <app-navbar></app-navbar>
+    <main class="page-content chat-layout">
+
+      <!-- SIDEBAR DES CONVERSATIONS -->
+      <aside class="conversations-panel">
+        <div class="conversations-header">
+          <h2>Messages</h2>
+          <button class="add-conv-btn" (click)="showNewConvModal = true" title="Nouvelle conversation">
+            <span class="material-icons">add</span>
+          </button>
+        </div>
+
+        <div class="conversations-list" *ngIf="conversations.length > 0; else noConvs">
+          <div
+            class="conv-item"
+            *ngFor="let conv of conversations"
+            [class.active]="selectedConversation?.id === conv.id"
+            (click)="selectConversation(conv)"
+          >
+            <div class="conv-avatar">
+              <img *ngIf="getConvPartner(conv).photoURL" [src]="getConvPartner(conv).photoURL" [alt]="getConvPartner(conv).displayName" class="avatar">
+              <div *ngIf="!getConvPartner(conv).photoURL" class="avatar avatar--initials">
+                {{ getInitials(getConvPartner(conv).displayName) }}
+              </div>
+            </div>
+            <div class="conv-info">
+              <div class="conv-info__header">
+                <span class="conv-name">{{ getConvPartner(conv).displayName }}</span>
+                <span class="conv-time">{{ formatConvDate(conv.lastMessageTime) }}</span>
+              </div>
+              <p class="conv-last">{{ conv.lastMessage || 'Démarrez la conversation...' }}</p>
+            </div>
+            <button class="delete-conv-btn" (click)="confirmDeleteConv(conv.id!, $event)" title="Supprimer">
+              <span class="material-icons">delete</span>
+            </button>
+          </div>
+        </div>
+
+        <ng-template #noConvs>
+          <div class="empty-convs">
+            <span>💬</span>
+            <p>Aucune conversation. Cliquez sur + pour commencer.</p>
+          </div>
+        </ng-template>
+      </aside>
+
+      <!-- ZONE DE CHAT -->
+      <section class="chat-panel">
+        <div class="chat-header" *ngIf="selectedConversation">
+          <div class="chat-partner">
+            <img *ngIf="getConvPartner(selectedConversation).photoURL" [src]="getConvPartner(selectedConversation).photoURL" class="avatar">
+            <div *ngIf="!getConvPartner(selectedConversation).photoURL" class="avatar avatar--initials">
+              {{ getInitials(getConvPartner(selectedConversation).displayName) }}
+            </div>
+            <span class="partner-name">{{ getConvPartner(selectedConversation).displayName }}</span>
+          </div>
+        </div>
+
+        <!-- MESSAGES -->
+        <div class="messages-area" *ngIf="selectedConversation">
+          <div
+            class="message"
+            *ngFor="let msg of messages"
+            [class.mine]="isMyMessage(msg)"
+            [class.theirs]="!isMyMessage(msg)"
+          >
+            <div class="message__bubble">
+              <p>{{ msg.content }}</p>
+            </div>
+            <div class="message__meta">
+              <span class="time">{{ formatTime(msg.timestamp) }}</span>
+              <span class="read-status" *ngIf="isMyMessage(msg)">
+                <span class="material-icons" [class.read]="msg.read">
+                  {{ msg.read ? 'done_all' : 'done' }}
+                </span>
+              </span>
+            </div>
+          </div>
+          <div #messagesEnd></div>
+        </div>
+
+        <!-- CHAMP D'ENVOI DU MESSAGE -->
+        <div class="message-input" *ngIf="selectedConversation">
+          <textarea
+            [(ngModel)]="newMessage"
+            (keydown)="onKeydown($event)"
+            placeholder="Écrivez votre message... (Entrée pour envoyer)"
+            rows="1"
+          ></textarea>
+          <button class="send-btn" (click)="sendMessage()" [disabled]="!newMessage.trim()">
+            <span class="material-icons">send</span>
+          </button>
+        </div>
+
+        <!-- "Aucune conversation sélectionnée" -->
+        <div class="no-conv-selected" *ngIf="!selectedConversation">
+          <span>💬</span>
+          <h3>Sélectionnez une conversation</h3>
+          <p>Choisissez une conversation dans la liste ou créez-en une nouvelle.</p>
+        </div>
+      </section>
+
+    </main>
+  </div>
+  <app-footer></app-footer>
+</div>
+
+<!-- GESTION DE LA CREATION DE NOUVELLE CONVERSATION -->
+<div class="overlay" *ngIf="showNewConvModal" (click)="showNewConvModal = false">
+  <div class="modal" (click)="$event.stopPropagation()">
+    <div class="modal__header">
+      <h2>Nouvelle conversation</h2>
+      <button class="close-btn" (click)="showNewConvModal = false">✕</button>
+    </div>
+    <div class="form-group">
+      <label>Adresse email de l'utilisateur</label>
+      <input type="email" [(ngModel)]="newConvEmail" placeholder="prenom.nom@email.com">
+      <span class="error-msg" *ngIf="newConvError">{{ newConvError }}</span>
+    </div>
+    <div class="modal__actions">
+      <button class="btn btn-ghost" (click)="showNewConvModal = false">Annuler</button>
+      <button class="btn btn-primary" (click)="createConversation()" [disabled]="!newConvEmail || newConvLoading">
+        <span *ngIf="newConvLoading" class="spinner"></span>
+        <span *ngIf="!newConvLoading">Démarrer</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- GESTION DE LA SUPPRESSION DE CONVERSATION -->
+<div class="overlay" *ngIf="showDeleteConvModal" (click)="showDeleteConvModal = false">
+  <div class="modal modal--small" (click)="$event.stopPropagation()">
+    <div class="modal__header">
+      <h2>Supprimer la conversation</h2>
+    </div>
+    <p>Êtes-vous sûr de vouloir supprimer cette conversation ? Tous les messages seront perdus.</p>
+    <div class="modal__actions">
+      <button class="btn btn-ghost" (click)="showDeleteConvModal = false">Annuler</button>
+      <button class="btn btn-danger" (click)="deleteConversation()">Oui, supprimer</button>
+    </div>
+  </div>
+</div>
