@@ -16,6 +16,7 @@ build/
 .env.local
 .env.*.local
 src/environments/environment.prod.ts
+src/environments/environment.ts
 
 # IDE / Editor
 .idea/

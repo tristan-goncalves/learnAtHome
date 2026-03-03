@@ -73,32 +73,32 @@ export class CalendarComponent implements OnInit, OnDestroy {
     });
     this.buildCalendar();
   }
-
+  // CALENDRIER
   buildCalendar(): void {
     const year = this.selectedMonth.getFullYear();
     const month = this.selectedMonth.getMonth();
     const firstDay = new Date(year, month, 1);
     const lastDay = new Date(year, month + 1, 0);
 
-    // Start from Monday
+    // Commence un Lundi
     let startDay = firstDay.getDay();
     startDay = startDay === 0 ? 6 : startDay - 1;
 
     this.calendarDays = [];
 
-    // Previous month days
+    // Mois précédents pour remplir la première semaine
     for (let i = startDay - 1; i >= 0; i--) {
       const date = new Date(year, month, -i);
       this.calendarDays.push(this.createDay(date, false));
     }
 
-    // Current month days
+    // Mois courant
     for (let d = 1; d <= lastDay.getDate(); d++) {
       const date = new Date(year, month, d);
       this.calendarDays.push(this.createDay(date, true));
     }
 
-    // Next month days to fill the grid
+    // Mois suivants pour compléter les semaines affichées
     const remaining = 42 - this.calendarDays.length;
     for (let i = 1; i <= remaining; i++) {
       const date = new Date(year, month + 1, i);

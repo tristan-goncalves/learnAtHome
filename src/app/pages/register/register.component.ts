@@ -18,7 +18,7 @@ import { AuthService } from '../../core/services/auth.service';
       <main class="auth-page">
         <div class="auth-card card">
           <div class="auth-card__logo">
-            <span>📚</span>
+            <img class="card-logo-icon" src="assets/icons/dragonball_4_etoiles.png" alt="LearnAtHome">
             <h2>Learn<span>At</span>Home</h2>
           </div>
 
@@ -32,11 +32,11 @@ import { AuthService } from '../../core/services/auth.service';
             <!-- Sélecteur du rôle de l'utilisateur -->
             <div class="role-selector">
               <button type="button" class="role-btn" [class.active]="role === 'student'" (click)="role = 'student'">
-                <span class="role-icon">🎓</span>
+                <img class="role-icon" src="assets/icons/gohan_student.png" alt="Élève">
                 <span>Je suis élève</span>
               </button>
               <button type="button" class="role-btn" [class.active]="role === 'tutor'" (click)="role = 'tutor'">
-                <span class="role-icon">👨‍🏫</span>
+                <img class="role-icon" src="assets/icons/piccolo_teacher.png" alt="Tuteur">
                 <span>Je suis tuteur</span>
               </button>
             </div>

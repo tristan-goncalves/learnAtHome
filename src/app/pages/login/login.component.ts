@@ -18,7 +18,7 @@ import { AuthService } from '../../core/services/auth.service';
       <main class="auth-page">
         <div class="auth-card card">
           <div class="auth-card__logo">
-            <span>📚</span>
+            <img class="card-logo-icon" src="assets/icons/dragonball_4_etoiles.png" alt="LearnAtHome">
             <h2>Learn<span>At</span>Home</h2>
           </div>
 

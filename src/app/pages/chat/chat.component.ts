@@ -18,7 +18,7 @@ import { Conversation, Message, User } from '../../core/models/models';
   styleUrls: ['./chat.component.scss']
 })
 export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
-  @ViewChild('messagesEnd') private messagesEnd!: ElementRef;
+  @ViewChild('messagesArea') private messagesArea!: ElementRef;
 
   private authService = inject(AuthService);
   private chatService = inject(ChatService);
@@ -170,7 +170,10 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
   }
 
   private scrollToBottom(): void {
-    try { this.messagesEnd.nativeElement.scrollIntoView({ behavior: 'smooth' }); } catch {}
+    try {
+      const el = this.messagesArea.nativeElement;
+      el.scrollTop = el.scrollHeight;
+    } catch {}
   }
 
   ngOnDestroy(): void {

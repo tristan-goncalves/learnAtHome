@@ -34,7 +34,7 @@ export class AuthService {
         if (user) {
           this.currentUserSubject.next(user);
         } else {
-          // Fallback : ssi document Firestore absent -> on le crée à partir des données Firebase Auth
+          // Fallback : si document Firestore absent -> on le crée à partir des données Firebase Auth
           const nameParts = firebaseUser.displayName?.split(' ') ?? [];
           const fallbackUser: User = {
             uid: firebaseUser.uid,

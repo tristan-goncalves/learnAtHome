@@ -32,14 +32,14 @@ import { FooterComponent } from '../../shared/components/footer/footer.component
             <div class="info-card card">
               <div class="info-icon">📞</div>
               <h3>Téléphone</h3>
-              <p>+33 (0)1 23 45 67 89</p>
+              <p>01 23 45 67 89</p>
               <p class="hours">Lun – Ven &nbsp;|&nbsp; 9h – 18h</p>
             </div>
 
             <div class="info-card card">
               <div class="info-icon">📍</div>
               <h3>Adresse</h3>
-              <p>12 Rue de l'Éducation<br>75001 Paris, France</p>
+              <p>12 Rue de l'Éducation<br>75001 Capsule Corp., France</p>
             </div>
 
             <div class="info-card card">

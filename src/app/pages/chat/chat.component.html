@@ -41,7 +41,6 @@
 
         <ng-template #noConvs>
           <div class="empty-convs">
-            <span>💬</span>
             <p>Aucune conversation. Cliquez sur + pour commencer.</p>
           </div>
         </ng-template>
@@ -60,7 +59,7 @@
         </div>
 
         <!-- MESSAGES -->
-        <div class="messages-area" *ngIf="selectedConversation">
+        <div class="messages-area" #messagesArea *ngIf="selectedConversation">
           <div
             class="message"
             *ngFor="let msg of messages"
@@ -79,7 +78,6 @@
               </span>
             </div>
           </div>
-          <div #messagesEnd></div>
         </div>
 
         <!-- CHAMP D'ENVOI DU MESSAGE -->
@@ -87,7 +85,7 @@
           <textarea
             [(ngModel)]="newMessage"
             (keydown)="onKeydown($event)"
-            placeholder="Écrivez votre message... (Entrée pour envoyer)"
+            placeholder="Écrivez votre message..."
             rows="1"
           ></textarea>
           <button class="send-btn" (click)="sendMessage()" [disabled]="!newMessage.trim()">

@@ -31,7 +31,7 @@ import { FooterComponent } from '../../shared/components/footer/footer.component
           </div>
           <div class="home__image">
             <div class="image-placeholder">
-              <span class="emoji">👨‍🎓</span>
+              <img src="assets/icons/goku_thumbs_up.png" alt="Un accompagnement personnalisé">
               <p>Un accompagnement personnalisé</p>
             </div>
           </div>
