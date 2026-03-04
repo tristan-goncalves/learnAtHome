@@ -96,6 +96,24 @@ export class ChatService {
     return ref.id;
   }
 
+  // Vérifie dans Firestore si une conversation existe déjà entre deux utilisateurs
+  async findConversationBetween(uid1: string, uid2: string): Promise<Conversation | null> {
+    const q = query(
+      collection(this.firestore, 'conversations'),
+      where('participants', 'array-contains', uid1)
+    );
+    const snap = await getDocs(q);
+    const found = snap.docs.find(d => (d.data()['participants'] as string[]).includes(uid2));
+    if (!found) return null;
+    const data = found.data();
+    return {
+      id: found.id,
+      ...data,
+      lastMessageTime: data['lastMessageTime']?.toDate?.() ?? null,
+      createdAt: data['createdAt']?.toDate?.() ?? new Date()
+    } as Conversation;
+  }
+
   async deleteConversation(id: string): Promise<void> {
     await deleteDoc(doc(this.firestore, 'conversations', id));
   }

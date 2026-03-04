@@ -12,7 +12,7 @@ import { EventService } from '../../core/services/event.service';
 import { Task, CalendarEvent, User } from '../../core/models/models';
 
 interface TaskForm { title: string; description: string; dueDate: string; }
-interface EventForm { title: string; description: string; date: string; participantEmail: string; }
+interface EventForm { title: string; description: string; date: string; }
 
 @Component({
   selector: 'app-tasks',
@@ -29,6 +29,8 @@ export class TasksComponent implements OnInit, OnDestroy {
   currentUser: User | null = null;
   tasks: Task[] = [];
   events: CalendarEvent[] = [];
+  students: User[] = [];
+  tutor: User | null = null;
   private subs = new Subscription();
 
   toast: { msg: string; type: 'success' | 'error' } | null = null;
@@ -39,6 +41,7 @@ export class TasksComponent implements OnInit, OnDestroy {
   editingTask: Task | null = null;
   deletingTaskId = '';
   taskForm: TaskForm = { title: '', description: '', dueDate: '' };
+  taskForStudentId = '';
   taskLoading = false;
   taskError = '';
 
@@ -47,32 +50,78 @@ export class TasksComponent implements OnInit, OnDestroy {
   showDeleteEventModal = false;
   editingEvent: CalendarEvent | null = null;
   deletingEventId = '';
-  eventForm: EventForm = { title: '', description: '', date: '', participantEmail: '' };
+  eventForm: EventForm = { title: '', description: '', date: '' };
+  selectedParticipantId = '';
   eventLoading = false;
   eventError = '';
-  participantError = '';
   eventParticipants: { uid: string; displayName: string; photoURL?: string }[] = [];
 
   ngOnInit(): void {
     this.authService.currentUser$.subscribe(user => {
       this.currentUser = user;
-      if (user) this.loadData(user.uid);
+      if (user) this.loadData(user);
     });
   }
 
-  loadData(userId: string): void {
+  loadData(user: User): void {
     this.subs.add(
-      this.taskService.getUserTasks(userId).subscribe({
+      this.taskService.getUserTasks(user.uid).subscribe({
         next: (t) => this.tasks = t,
         error: (e) => this.showToast('Erreur chargement tâches : ' + (e?.message || e), 'error')
       })
     );
     this.subs.add(
-      this.eventService.getUserEvents(userId).subscribe({
+      this.eventService.getUserEvents(user.uid).subscribe({
         next: (e) => this.events = e,
         error: (e) => this.showToast('Erreur chargement événements : ' + (e?.message || e), 'error')
       })
     );
+    if (user.role === 'tutor' && user.studentIds?.length) {
+      Promise.all(user.studentIds.map(uid => this.authService.getUserData(uid)))
+        .then(profiles => {
+          this.students = profiles.filter(Boolean) as User[];
+          this.updateRelatedUsers();
+        });
+    }
+    if (user.role === 'student' && user.tutorId) {
+      this.authService.getUserData(user.tutorId).then(t => {
+        this.tutor = t;
+        this.updateRelatedUsers();
+      });
+    }
+    this.authService.getUserData(user.uid).then(freshUser => {
+      if (freshUser?.contactIds?.length) {
+        Promise.all(freshUser.contactIds.map(uid => this.authService.getUserData(uid)))
+          .then(profiles => {
+            this.invitationContacts = profiles.filter(Boolean).map(u => ({
+              uid: u!.uid,
+              displayName: `${u!.firstName} ${u!.lastName}`,
+              photoURL: u!.photoURL
+            }));
+            this.updateRelatedUsers();
+          });
+      }
+    });
+  }
+
+  relatedUsers: { uid: string; displayName: string; photoURL?: string }[] = [];
+  private invitationContacts: { uid: string; displayName: string; photoURL?: string }[] = [];
+
+  private updateRelatedUsers(): void {
+    const base: { uid: string; displayName: string; photoURL?: string }[] = [];
+    if (this.currentUser?.role === 'tutor') {
+      base.push(...this.students.map(s => ({
+        uid: s.uid,
+        displayName: `${s.firstName} ${s.lastName}`,
+        photoURL: s.photoURL
+      })));
+    } else if (this.currentUser?.role === 'student' && this.tutor) {
+      base.push({ uid: this.tutor.uid, displayName: `${this.tutor.firstName} ${this.tutor.lastName}`, photoURL: this.tutor.photoURL });
+    }
+    this.invitationContacts.forEach(c => {
+      if (!base.find(u => u.uid === c.uid)) base.push(c);
+    });
+    this.relatedUsers = base;
   }
 
   // TÂCHES
@@ -80,6 +129,7 @@ export class TasksComponent implements OnInit, OnDestroy {
     this.editingTask = null;
     this.taskError = '';
     this.taskForm = { title: '', description: '', dueDate: '' };
+    this.taskForStudentId = '';
     this.showTaskModal = true;
   }
 
@@ -106,13 +156,17 @@ export class TasksComponent implements OnInit, OnDestroy {
     this.taskLoading = true;
     this.taskError = '';
     try {
+      const targetUserId = this.currentUser.role === 'tutor' && this.taskForStudentId
+        ? this.taskForStudentId
+        : this.currentUser.uid;
       const data: Omit<Task, 'id'> = {
         title: this.taskForm.title.trim(),
         description: this.taskForm.description.trim(),
         dueDate: new Date(this.taskForm.dueDate),
-        userId: this.currentUser.uid,
+        userId: targetUserId,
         completed: false,
-        createdAt: new Date()
+        createdAt: new Date(),
+        ...(targetUserId !== this.currentUser.uid ? { createdBy: this.currentUser.uid } : {})
       };
       if (this.editingTask?.id) {
         await this.taskService.updateTask(this.editingTask.id, data);
@@ -162,9 +216,9 @@ export class TasksComponent implements OnInit, OnDestroy {
   openAddEvent(): void {
     this.editingEvent = null;
     this.eventError = '';
-    this.eventForm = { title: '', description: '', date: '', participantEmail: '' };
+    this.eventForm = { title: '', description: '', date: '' };
     this.eventParticipants = [];
-    this.participantError = '';
+    this.selectedParticipantId = '';
     this.showEventModal = true;
   }
 
@@ -174,30 +228,20 @@ export class TasksComponent implements OnInit, OnDestroy {
     this.eventForm = {
       title: event.title,
       description: event.description,
-      date: new Date(event.date).toISOString().slice(0, 16),
-      participantEmail: ''
+      date: new Date(event.date).toISOString().slice(0, 16)
     };
-    this.eventParticipants = event.participantPhotos || [];
-    this.participantError = '';
+    this.eventParticipants = (event.participantPhotos || []).filter(p => p.uid !== event.creatorId);
+    this.selectedParticipantId = '';
     this.showEventModal = true;
   }
 
-  async addParticipant(): Promise<void> {
-    this.participantError = '';
-    if (!this.eventForm.participantEmail) return;
-    try {
-      const user = await this.eventService.findUserByEmail(this.eventForm.participantEmail);
-      if (user) {
-        if (!this.eventParticipants.find(p => p.uid === user.uid)) {
-          this.eventParticipants.push(user);
-        }
-        this.eventForm.participantEmail = '';
-      } else {
-        this.participantError = 'Aucun utilisateur trouvé avec cet email.';
-      }
-    } catch {
-      this.participantError = 'Erreur lors de la recherche.';
+  addParticipant(): void {
+    if (!this.selectedParticipantId) return;
+    const user = this.relatedUsers.find(u => u.uid === this.selectedParticipantId);
+    if (user && !this.eventParticipants.find(p => p.uid === user.uid)) {
+      this.eventParticipants.push(user);
     }
+    this.selectedParticipantId = '';
   }
 
   removeParticipant(uid: string): void {
@@ -216,14 +260,20 @@ export class TasksComponent implements OnInit, OnDestroy {
     this.eventLoading = true;
     this.eventError = '';
     try {
-      const allParticipants = [this.currentUser.uid, ...this.eventParticipants.map(p => p.uid)];
+      const creatorEntry = {
+        uid: this.currentUser.uid,
+        displayName: `${this.currentUser.firstName} ${this.currentUser.lastName}`,
+        photoURL: this.currentUser.photoURL
+      };
+      const otherParticipants = this.eventParticipants.filter(p => p.uid !== this.currentUser!.uid);
+      const allParticipants = [this.currentUser.uid, ...otherParticipants.map(p => p.uid)];
       const data: Omit<CalendarEvent, 'id'> = {
         title: this.eventForm.title.trim(),
         description: this.eventForm.description.trim(),
         date: new Date(this.eventForm.date),
         creatorId: this.currentUser.uid,
         participants: [...new Set(allParticipants)],
-        participantPhotos: this.eventParticipants,
+        participantPhotos: [creatorEntry, ...otherParticipants],
         createdAt: new Date()
       };
       if (this.editingEvent?.id) {
@@ -262,6 +312,13 @@ export class TasksComponent implements OnInit, OnDestroy {
 
   canDeleteEvent(event: CalendarEvent): boolean {
     return event.creatorId === this.currentUser?.uid;
+  }
+
+  getParticipantInitials(displayName: string): string {
+    const parts = displayName.trim().split(' ');
+    const first = parts[0]?.charAt(0).toUpperCase() ?? '';
+    const last = parts.length > 1 ? parts[parts.length - 1].charAt(0).toUpperCase() : '';
+    return first + last;
   }
 
   formatDate(date: Date): string {

@@ -42,6 +42,10 @@
                   </div>
                 </div>
                 <p class="item-description">{{ task.description }}</p>
+                <div class="item-meta" *ngIf="task.createdBy && tutor">
+                  <span class="material-icons">person</span>
+                  Créé par {{ tutor.firstName }} {{ tutor.lastName }}
+                </div>
                 <div class="item-meta">
                   <span class="material-icons">schedule</span>
                   {{ formatDate(task.dueDate) }}
@@ -91,7 +95,7 @@
                 <div class="participants" *ngIf="event.participantPhotos?.length">
                   <ng-container *ngFor="let p of event.participantPhotos!.slice(0,2)">
                     <img *ngIf="p.photoURL" [src]="p.photoURL" [alt]="p.displayName" class="avatar p-avatar">
-                    <div *ngIf="!p.photoURL" class="avatar p-avatar p-avatar--initials">{{ p.displayName.charAt(0) }}</div>
+                    <div *ngIf="!p.photoURL" class="avatar p-avatar p-avatar--initials">{{ getParticipantInitials(p.displayName) }}</div>
                   </ng-container>
                   <span *ngIf="event.participantPhotos!.length > 2" class="more">+{{ event.participantPhotos!.length - 2 }}</span>
                 </div>
@@ -126,6 +130,15 @@
     </div>
 
     <div class="form-fields">
+      <div class="form-group" *ngIf="currentUser?.role === 'tutor' && students.length > 0">
+        <label>Pour qui ?</label>
+        <select [(ngModel)]="taskForStudentId">
+          <option value="">Moi-même</option>
+          <option *ngFor="let s of students" [value]="s.uid">
+            {{ s.firstName }} {{ s.lastName }}
+          </option>
+        </select>
+      </div>
       <div class="form-group">
         <label>Titre *</label>
         <input type="text" [(ngModel)]="taskForm.title" placeholder="Titre de la tâche">
@@ -188,19 +201,21 @@
         <label>Description</label>
         <textarea [(ngModel)]="eventForm.description" rows="2" placeholder="Description brève..."></textarea>
       </div>
-      <div class="form-group">
+      <div class="form-group" *ngIf="relatedUsers.length > 0">
         <label>Ajouter des participants (optionnel)</label>
         <div class="participant-input">
-          <input type="email" [(ngModel)]="eventForm.participantEmail"
-                 placeholder="email@exemple.com" (keydown.enter)="addParticipant()">
-          <button class="btn btn-secondary" type="button" (click)="addParticipant()">Ajouter</button>
+          <select [(ngModel)]="selectedParticipantId">
+            <option value="">-- Sélectionner --</option>
+            <option *ngFor="let u of relatedUsers" [value]="u.uid">{{ u.displayName }}</option>
+          </select>
+          <button class="btn btn-secondary" type="button" (click)="addParticipant()"
+                  [disabled]="!selectedParticipantId">Ajouter</button>
         </div>
-        <span class="error-msg" *ngIf="participantError">{{ participantError }}</span>
       </div>
       <div class="participants-list" *ngIf="eventParticipants.length > 0">
         <div class="participant-chip" *ngFor="let p of eventParticipants">
           <img *ngIf="p.photoURL" [src]="p.photoURL" [alt]="p.displayName" class="avatar" style="width:24px;height:24px;">
-          <div *ngIf="!p.photoURL" class="avatar" style="width:24px;height:24px;font-size:11px;background:var(--primary);color:white;">{{ p.displayName.charAt(0) }}</div>
+          <div *ngIf="!p.photoURL" class="avatar" style="width:24px;height:24px;font-size:11px;background:var(--primary);color:white;">{{ getParticipantInitials(p.displayName) }}</div>
           <span>{{ p.displayName }}</span>
           <button (click)="removeParticipant(p.uid)">✕</button>
         </div>

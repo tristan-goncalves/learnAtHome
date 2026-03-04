@@ -34,6 +34,19 @@
       color: var(--text-primary);
 
       .at { color: var(--primary); }
+
+      .role-badge {
+        margin-left: 8px;
+        font-size: 11px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: white;
+        background: var(--primary);
+        padding: 2px 8px;
+        border-radius: 20px;
+        vertical-align: middle;
+      }
     }
   }
 

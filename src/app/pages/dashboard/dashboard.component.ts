@@ -83,7 +83,7 @@ import { Task, CalendarEvent, User } from '../../core/models/models';
                       <ng-container *ngFor="let p of event.participantPhotos!.slice(0, 2)">
                         <img *ngIf="p.photoURL" [src]="p.photoURL" [alt]="p.displayName" class="avatar participant-avatar">
                         <div *ngIf="!p.photoURL" class="avatar participant-avatar avatar--initials">
-                          {{ p.displayName.charAt(0) }}
+                          {{ getParticipantInitials(p.displayName) }}
                         </div>
                       </ng-container>
                       <span *ngIf="event.participantPhotos!.length > 2" class="more-participants">
@@ -139,6 +139,13 @@ export class DashboardComponent implements OnInit, OnDestroy {
         this.events = events.filter(e => e.date >= now);
       })
     );
+  }
+
+  getParticipantInitials(displayName: string): string {
+    const parts = displayName.trim().split(' ');
+    const first = parts[0]?.charAt(0).toUpperCase() ?? '';
+    const last = parts.length > 1 ? parts[parts.length - 1].charAt(0).toUpperCase() : '';
+    return first + last;
   }
 
   formatDate(date: Date): string {

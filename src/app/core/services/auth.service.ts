@@ -12,7 +12,13 @@ import {
   Firestore,
   doc,
   setDoc,
-  getDoc
+  getDoc,
+  getDocs,
+  updateDoc,
+  collection,
+  query,
+  where,
+  arrayUnion
 } from '@angular/fire/firestore';
 import { BehaviorSubject } from 'rxjs';
 import { User } from '../models/models';
@@ -52,7 +58,7 @@ export class AuthService {
               firstName: fallbackUser.firstName,
               lastName: fallbackUser.lastName,
               role: fallbackUser.role,
-              photoURL: fallbackUser.photoURL,
+              photoURL: fallbackUser.photoURL ?? null,
               createdAt: fallbackUser.createdAt
             });
           } catch (error) {
@@ -75,7 +81,8 @@ export class AuthService {
     password: string,
     firstName: string,
     lastName: string,
-    role: 'student' | 'tutor'
+    role: 'student' | 'tutor',
+    tutorEmail?: string
   ): Promise<void> {
     const cred = await createUserWithEmailAndPassword(this.auth, email, password);
     await updateProfile(cred.user, { displayName: `${firstName} ${lastName}` });
@@ -89,9 +96,24 @@ export class AuthService {
         photoURL: null,
         createdAt: new Date()
       });
+
+      if (role === 'student' && tutorEmail) {
+        const tutor = await this.findUserByEmail(tutorEmail);
+        if (!tutor || tutor.role !== 'tutor') {
+          throw new Error('TUTOR_NOT_FOUND');
+        }
+        await updateDoc(doc(this.firestore, 'users', tutor.uid), {
+          studentIds: arrayUnion(cred.user.uid)
+        });
+        await setDoc(doc(this.firestore, 'users', cred.user.uid), { tutorId: tutor.uid }, { merge: true });
+      }
+
+      const userData = await this.getUserData(cred.user.uid);
+      if (userData) this.currentUserSubject.next(userData);
     } catch (error) {
       // Firestore indisponible : alors le document sera créé au prochain login via onAuthStateChanged
       console.error('Erreur lors de la création du document utilisateur Firestore :', error);
+      throw error;
     }
   }
 
@@ -112,6 +134,25 @@ export class AuthService {
         const data = userDoc.data();
         return {
           uid,
+          ...data,
+          createdAt: data['createdAt']?.toDate ? data['createdAt'].toDate() : new Date()
+        } as User;
+      }
+      return null;
+    } catch {
+      return null;
+    }
+  }
+
+  async findUserByEmail(email: string): Promise<User | null> {
+    try {
+      const q = query(collection(this.firestore, 'users'), where('email', '==', email));
+      const snap = await getDocs(q);
+      if (!snap.empty) {
+        const d = snap.docs[0];
+        const data = d.data();
+        return {
+          uid: d.id,
           ...data,
           createdAt: data['createdAt']?.toDate ? data['createdAt'].toDate() : new Date()
         } as User;
@@ -156,6 +197,13 @@ export class AuthService {
       img.onerror = reject;
       img.src = url;
     });
+  }
+
+  async refreshCurrentUser(): Promise<void> {
+    const current = this.currentUserSubject.value;
+    if (!current) return;
+    const fresh = await this.getUserData(current.uid);
+    if (fresh) this.currentUserSubject.next(fresh);
   }
 
   get currentUser(): User | null {

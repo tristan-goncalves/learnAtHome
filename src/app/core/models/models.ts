@@ -7,6 +7,19 @@ export interface User {
   photoURL?: string;
   role: 'student' | 'tutor';
   createdAt: Date;
+  tutorId?: string; // UID du tuteur (uniquement pour les élèves)
+  studentIds?: string[]; // UIDs des élèves (uniquement pour les tuteurs)
+  contactIds?: string[]; // UIDs des contacts ajoutés via invitation
+}
+
+// CONTACT REQUEST
+export interface ContactRequest {
+  id?: string;
+  fromUid: string;
+  fromDisplayName: string;
+  toEmail: string;
+  status: 'pending' | 'accepted' | 'rejected';
+  createdAt: Date;
 }
 
 // TASK
@@ -16,8 +29,9 @@ export interface Task {
   description: string;
   dueDate: Date;
   completed: boolean;
-  userId: string;
+  userId: string; // UID de la personne à qui la tâche est assignée
   createdAt: Date;
+  createdBy?: string; // UID du créateur si différent (tuteur qui crée pour un élève)
 }
 
 // EVENT
@@ -45,7 +59,7 @@ export interface Message {
 export interface Conversation {
   id?: string;
   participants: string[]; // array of UIDs
-  participantDetails?: { uid: string; displayName: string; photoURL?: string }[];
+  participantDetails?: { uid: string; displayName: string; photoURL?: string | null }[];
   lastMessage?: string;
   lastMessageTime?: Date;
   unreadCount?: number;

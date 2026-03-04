@@ -46,6 +46,10 @@ export const routes: Routes = [
     canActivate: [authGuard]
   },
   {
+    path: 'valider-contact',
+    loadComponent: () => import('./pages/contact-validation/contact-validation.component').then(m => m.ContactValidationComponent)
+  },
+  {
     path: '**',
     redirectTo: ''
   }

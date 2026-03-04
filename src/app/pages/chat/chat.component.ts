@@ -8,6 +8,7 @@ import { NavbarComponent } from '../../shared/components/navbar/navbar.component
 import { FooterComponent } from '../../shared/components/footer/footer.component';
 import { AuthService } from '../../core/services/auth.service';
 import { ChatService } from '../../core/services/chat.service';
+import { ContactRequestService } from '../../core/services/contact-request.service';
 import { Conversation, Message, User } from '../../core/models/models';
 
 @Component({
@@ -22,6 +23,7 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
 
   private authService = inject(AuthService);
   private chatService = inject(ChatService);
+  private contactRequestService = inject(ContactRequestService);
 
   currentUser: User | null = null;
   conversations: Conversation[] = [];
@@ -34,13 +36,27 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
 
   // Nouvelle conversation
   showNewConvModal = false;
-  newConvEmail = '';
+  newConvUserId = '';
   newConvError = '';
   newConvLoading = false;
+  contactUsers: { uid: string; displayName: string; photoURL?: string | null }[] = [];
 
   // Supprimer une conversation
   showDeleteConvModal = false;
   deletingConvId = '';
+
+  // Ajouter un contact par email
+  showAddContactModal = false;
+  addContactEmail = '';
+  addContactLoading = false;
+  addContactError = '';
+  addContactSuccess = '';
+
+  // Supprimer un contact (uniquement ceux via invitation)
+  showRemoveContactModal = false;
+  invitationContacts: { uid: string; displayName: string; photoURL?: string | null }[] = [];
+  removingContact: { uid: string; displayName: string } | null = null;
+  removeContactLoading = false;
 
   ngOnInit(): void {
     this.authService.currentUser$.subscribe(user => {
@@ -51,8 +67,44 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
             this.conversations = convs;
           })
         );
+        this.loadContacts(user);
       }
     });
+  }
+
+  private async loadContacts(user: User): Promise<void> {
+    // Lecture Firestore directe pour garantir des données fraîches
+    const freshUser = await this.authService.getUserData(user.uid) ?? user;
+    const contacts: { uid: string; displayName: string; photoURL?: string | null }[] = [];
+
+    // Contacts issus de la relation tuteur/élève
+    if (freshUser.role === 'tutor' && freshUser.studentIds?.length) {
+      const profiles = await Promise.all(freshUser.studentIds.map(uid => this.authService.getUserData(uid)));
+      profiles.filter(Boolean).forEach(s => contacts.push({
+        uid: s!.uid,
+        displayName: `${s!.firstName} ${s!.lastName}`,
+        photoURL: s!.photoURL
+      }));
+    } else if (freshUser.role === 'student' && freshUser.tutorId) {
+      const t = await this.authService.getUserData(freshUser.tutorId);
+      if (t) contacts.push({ uid: t.uid, displayName: `${t.firstName} ${t.lastName}`, photoURL: t.photoURL });
+    }
+
+    // Contacts ajoutés via invitation
+    if (freshUser.contactIds?.length) {
+      const extra = await Promise.all(freshUser.contactIds.map(uid => this.authService.getUserData(uid)));
+      const invContacts: typeof this.invitationContacts = [];
+      extra.filter(Boolean).forEach(u => {
+        const entry = { uid: u!.uid, displayName: `${u!.firstName} ${u!.lastName}`, photoURL: u!.photoURL ?? null };
+        invContacts.push(entry);
+        if (!contacts.find(c => c.uid === u!.uid)) contacts.push(entry);
+      });
+      this.invitationContacts = invContacts;
+    } else {
+      this.invitationContacts = [];
+    }
+
+    this.contactUsers = contacts;
   }
 
   selectConversation(conv: Conversation): void {
@@ -83,38 +135,50 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
   }
 
   async createConversation(): Promise<void> {
-    if (!this.newConvEmail || !this.currentUser) return;
+    if (!this.newConvUserId || !this.currentUser) return;
     this.newConvError = '';
     this.newConvLoading = true;
     try {
-      const targetUser = await this.chatService.findUserByEmail(this.newConvEmail);
+      const targetUser = this.contactUsers.find(u => u.uid === this.newConvUserId);
       if (!targetUser) {
-        this.newConvError = 'Aucun utilisateur trouvé avec cet email.';
+        this.newConvError = 'Utilisateur introuvable.';
         return;
       }
-      if (targetUser.uid === this.currentUser.uid) {
-        this.newConvError = 'Vous ne pouvez pas démarrer une conversation avec vous-même.';
-        return;
-      }
-      const existing = this.conversations.find(c =>
-        c.participants.includes(targetUser.uid) && c.participants.includes(this.currentUser!.uid)
+      // Vérification directe Firestore pour éviter les doublons quand le cache local n'est pas à jour
+      const existing = await this.chatService.findConversationBetween(
+        this.currentUser.uid, targetUser.uid
       );
       if (existing) {
         this.selectConversation(existing);
         this.showNewConvModal = false;
+        this.newConvUserId = '';
         return;
       }
       const myDetails = {
         uid: this.currentUser.uid,
         displayName: `${this.currentUser.firstName} ${this.currentUser.lastName}`,
-        photoURL: this.currentUser.photoURL
+        photoURL: this.currentUser.photoURL ?? null
       };
-      const id = await this.chatService.createConversation(
+      const targetDetails = {
+        uid: targetUser.uid,
+        displayName: targetUser.displayName,
+        photoURL: targetUser.photoURL ?? null
+      };
+      const convId = await this.chatService.createConversation(
         [this.currentUser.uid, targetUser.uid],
-        [myDetails, targetUser]
+        [myDetails, targetDetails]
       );
+      // Auto-sélectionner la nouvelle conversation
+      const newConv: Conversation = {
+        id: convId,
+        participants: [this.currentUser.uid, targetUser.uid],
+        participantDetails: [myDetails, targetDetails],
+        lastMessage: '',
+        createdAt: new Date()
+      };
+      this.selectConversation(newConv);
       this.showNewConvModal = false;
-      this.newConvEmail = '';
+      this.newConvUserId = '';
     } finally {
       this.newConvLoading = false;
     }
@@ -135,9 +199,66 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
     this.showDeleteConvModal = false;
   }
 
-  getConvPartner(conv: Conversation): { displayName: string; photoURL?: string } {
-    if (!this.currentUser || !conv.participantDetails) return { displayName: 'Inconnu' };
-    return conv.participantDetails.find(p => p.uid !== this.currentUser!.uid) || { displayName: 'Inconnu' };
+  async removeContact(): Promise<void> {
+    if (!this.removingContact || !this.currentUser) return;
+    this.removeContactLoading = true;
+    try {
+      await this.contactRequestService.removeContact(this.currentUser.uid, this.removingContact.uid);
+      // Mettre à jour les listes locales sans recharger Firestore
+      this.invitationContacts = this.invitationContacts.filter(c => c.uid !== this.removingContact!.uid);
+      this.contactUsers = this.contactUsers.filter(c => c.uid !== this.removingContact!.uid);
+      this.removingContact = null;
+      if (!this.invitationContacts.length) this.showRemoveContactModal = false;
+    } finally {
+      this.removeContactLoading = false;
+    }
+  }
+
+  async sendContactRequest(): Promise<void> {
+    if (!this.addContactEmail.trim() || !this.currentUser) return;
+    this.addContactLoading = true;
+    this.addContactError = '';
+    this.addContactSuccess = '';
+    try {
+      const target = await this.authService.findUserByEmail(this.addContactEmail.trim());
+      if (!target) {
+        this.addContactError = 'Aucun utilisateur trouvé avec cet email.';
+        return;
+      }
+      if (target.uid === this.currentUser.uid) {
+        this.addContactError = 'Vous ne pouvez pas vous ajouter vous-même.';
+        return;
+      }
+      const alreadyContact = this.contactUsers.some(c => c.uid === target.uid);
+      if (alreadyContact) {
+        this.addContactError = 'Cet utilisateur est déjà dans vos contacts.';
+        return;
+      }
+      const fromName = `${this.currentUser.firstName} ${this.currentUser.lastName}`;
+      await this.contactRequestService.sendContactRequest(this.currentUser.uid, fromName, target.email);
+      this.addContactSuccess = `Invitation envoyée à ${target.email} !`;
+      this.addContactEmail = '';
+    } catch (e: any) {
+      this.addContactError = e?.message || "Erreur lors de l'envoi de l'invitation.";
+    } finally {
+      this.addContactLoading = false;
+    }
+  }
+
+  getConvPartner(conv: Conversation): { displayName: string; photoURL?: string | null } {
+    if (!this.currentUser) return { displayName: 'Inconnu' };
+    // 1. Chercher dans participantDetails stocké avec la conversation
+    if (conv.participantDetails?.length) {
+      const found = conv.participantDetails.find(p => p.uid !== this.currentUser!.uid);
+      if (found?.displayName) return found;
+    }
+    // 2. Fallback : trouver le partenaire via l'UID dans participants, puis chercher dans contactUsers
+    const partnerUid = conv.participants?.find(uid => uid !== this.currentUser!.uid);
+    if (partnerUid) {
+      const contact = this.contactUsers.find(c => c.uid === partnerUid);
+      if (contact) return contact;
+    }
+    return { displayName: 'Inconnu' };
   }
 
   isMyMessage(msg: Message): boolean {

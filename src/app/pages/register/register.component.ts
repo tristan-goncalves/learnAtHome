@@ -41,6 +41,14 @@ import { AuthService } from '../../core/services/auth.service';
               </button>
             </div>
 
+            <!-- Email du tuteur (uniquement pour les élèves) -->
+            <div class="form-group" *ngIf="role === 'student'">
+              <label>Email du tuteur *</label>
+              <input type="email" [(ngModel)]="tutorEmail" name="tutorEmail"
+                     placeholder="tuteur@email.com" required [class.error]="tutorEmailError">
+              <span class="error-msg" *ngIf="tutorEmailError">Email du tuteur invalide ou introuvable</span>
+            </div>
+
             <div class="name-row">
               <div class="form-group">
                 <label>Prénom *</label>
@@ -104,6 +112,7 @@ export class RegisterComponent {
   email = '';
   password = '';
   confirmPassword = '';
+  tutorEmail = '';
   role: 'student' | 'tutor' = 'student';
   loading = false;
   showPassword = false;
@@ -111,12 +120,14 @@ export class RegisterComponent {
   emailError = false;
   passwordError = false;
   confirmError = false;
+  tutorEmailError = false;
 
   async register(): Promise<void> {
     this.errorMessage = '';
     this.emailError = false;
     this.passwordError = false;
     this.confirmError = false;
+    this.tutorEmailError = false;
 
     if (!this.isValidEmail(this.email)) { this.emailError = true; return; }
     if (this.password.length < 8) { this.passwordError = true; return; }
@@ -125,25 +136,35 @@ export class RegisterComponent {
       this.errorMessage = 'Veuillez renseigner votre prénom et nom.';
       return;
     }
+    if (this.role === 'student' && !this.isValidEmail(this.tutorEmail)) {
+      this.tutorEmailError = true;
+      return;
+    }
 
     this.loading = true;
     try {
       await this.authService.register(
         this.email, this.password,
         this.firstName.trim(), this.lastName.trim(),
-        this.role
+        this.role,
+        this.role === 'student' ? this.tutorEmail : undefined
       );
       this.router.navigate(['/dashboard']);
     } catch (error: any) {
-      switch (error.code) {
-        case 'auth/email-already-in-use':
-          this.errorMessage = 'Cette adresse email est déjà utilisée.';
-          break;
-        case 'auth/weak-password':
-          this.errorMessage = 'Mot de passe trop faible (minimum 6 caractères).';
-          break;
-        default:
-          this.errorMessage = 'Une erreur est survenue. Veuillez réessayer.';
+      if (error.message === 'TUTOR_NOT_FOUND') {
+        this.tutorEmailError = true;
+        this.errorMessage = 'Aucun tuteur trouvé avec cet email.';
+      } else {
+        switch (error.code) {
+          case 'auth/email-already-in-use':
+            this.errorMessage = 'Cette adresse email est déjà utilisée.';
+            break;
+          case 'auth/weak-password':
+            this.errorMessage = 'Mot de passe trop faible (minimum 6 caractères).';
+            break;
+          default:
+            this.errorMessage = 'Une erreur est survenue. Veuillez réessayer.';
+        }
       }
     } finally {
       this.loading = false;

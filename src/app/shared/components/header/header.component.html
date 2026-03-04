@@ -3,7 +3,7 @@
     <!-- Logo de LearnAtHome -->
     <a routerLink="/" class="header__logo">
       <img class="logo-icon" src="assets/icons/dragonball_4_etoiles.png" alt="LearnAtHome">
-      <span class="logo-text">Learn<span class="at">At</span>Home</span>
+      <span class="logo-text">Learn<span class="at">At</span>Home<span class="role-badge" *ngIf="currentUser">{{ currentUser.role === 'student' ? 'Student' : 'Tutor' }}</span></span>
     </a>
 
     <!-- Navigation sans authentification -->
