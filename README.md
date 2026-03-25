@@ -32,7 +32,7 @@ LearnAtHome est une application web de mise en relation entre **tuteurs** et **�
 ### 1. Cloner le dépôt
 
 ```bash
-git clone https://github.com/<votre-username>/learnAtHome.git
+git clone https://github.com/tristan-goncalves/learnAtHome.git
 cd learnAtHome
 npm install
 ```
